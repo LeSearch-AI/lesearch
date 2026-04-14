@@ -1,14 +1,16 @@
 # LeSearch — Epics & User Stories
 
-**Version**: 0.1 (draft)
+**Version**: 0.2 (review synthesis applied — A1–A12, D1–D5)
 **Date**: 2026-04-14
-**Status**: Backlog-ready; will be imported to Linear after team review.
+**Status**: Backlog ruthlessly cut to v0.1.0 scope; rest deferred to v0.2.0 / Phase B.
 
-Format: `As a [role], I want [capability], so that [outcome].` Acceptance criteria are BDD-style.
+Format: each epic carries a JTBD one-liner (per D4) and BDD-style acceptance criteria for test authors.
 
 ---
 
 ## E1 — Installation & Onboarding
+
+**JTBD**: When I try a new agent control plane, I want to install and uninstall it cleanly in under 5 minutes, so that I can evaluate it without risk to my machine.
 
 ### S-1.1 — One-command install
 **As a** solo developer, **I want to** install LeSearch with one command, **so that** I can try it immediately without reading setup docs.
@@ -20,13 +22,14 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 - AND `lesearch --help` prints usage
 
 ### S-1.2 — First-run guided setup
-**As a** new user, **I want** `lesearch` to guide me through first-run choices (transport mode, agent providers), **so that** I don't have to read config docs upfront.
+**As a** new user, **I want** `lesearch` to detect my providers and pick safe defaults on first-run, **so that** I don't have to read config docs upfront.
 
 **Acceptance**
 - WHEN I run `lesearch daemon start` for the first time
-- THEN I'm prompted to choose: `direct`, `ziti`, or `noise-ws` transport (default: direct)
-- AND asked which providers to detect (scans PATH for `claude`, `codex`, `opencode`, `gemini`)
-- AND a `~/.lesearch/config.toml` is created with explicit choices recorded
+- THEN the daemon silently selects **"Local Only"** (loopback `127.0.0.1`) — no transport choice presented in v0.1.0; protocol terminology (`direct`/`ziti`/`noise-ws`) MUST NOT appear in installer copy (FR-19)
+- AND providers are detected by scanning `PATH` for `claude` and `codex` (v0.1.0 supported set; OpenCode + Gemini CLI become detectable in Phase B)
+- AND a `~/.lesearch/config.toml` is created with detected providers, an empty `origin_allowlist` populated with `http://127.0.0.1:6767`, and `[auth]` block defaults
+- AND **(Phase B)** when "Remote Access" mode is added, first-run gains an additional toggle — never a raw transport-name picker
 
 ### S-1.3 — Clean uninstall
 **As a** careful user, **I want to** uninstall LeSearch with one command, **so that** I have confidence it leaves no trace.
@@ -50,6 +53,8 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 ---
 
 ## E2 — Spawn & Control Agents
+
+**JTBD**: When I'm coding across multiple projects, I want one command surface to spawn and steer any CLI agent, so that I stop context-switching between tools.
 
 ### S-2.1 — Spawn any CLI agent
 **As a** developer, **I want to** spawn Claude Code, Codex, OpenCode, or Gemini CLI through a single command, **so that** I don't context-switch between tools.
@@ -106,6 +111,8 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E3 — Persistent Sessions
 
+**JTBD**: When an agent did something interesting last week, I want to search for it across every session, so that I can recall, verify, or replay it.
+
 ### S-3.1 — Session log auto-capture
 **As a** developer, **I want** every agent session logged automatically, **so that** I can review anything later without opting in.
 
@@ -146,7 +153,7 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 **Acceptance**
 - WHEN I run `lesearch sessions export <id> --format markdown`
 - THEN a `.md` file is produced with event stream, tool calls formatted as code blocks, timestamps
-- AND `--format jsonl` and `--format cbor` also work
+- AND `--format jsonl` also works in v0.1.0; `--format cbor` is **Phase B** (per ruthless v0.1.0 scope cut)
 
 ### S-3.6 — Session retention and rotation
 **As a** self-hoster, **I want** old sessions to be archived/pruned automatically, **so that** my disk doesn't fill up.
@@ -161,7 +168,22 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E4 — Multi-Device Control
 
-### S-4.1 — Pair a phone via QR code
+**JTBD**: When I'm away from my desk, I want to monitor and steer agents from another device, so that long-running work doesn't pin me to one machine.
+
+> **Phase B — NOT in v0.1.0** (except S-4.0 below). v0.1.0 ships only the loopback responsive web UI; native iOS/macOS, remote pairing, push notifications, and voice dictation are Phase B.
+
+### S-4.0 — Responsive web UI on loopback (v0.1.0)
+
+**As a** developer working from any browser on my host machine, **I want to** open a responsive web UI served by the daemon, **so that** I can monitor agents from a tab without installing the desktop app.
+
+**Acceptance**
+- WHEN the daemon is running and I open `http://127.0.0.1:6767/`
+- THEN a responsive React UI loads (same codebase as the Tauri inner webview)
+- AND it shows the same agent list + live timelines + session search as the Tauri shell
+- AND the daemon refuses requests from any non-loopback Origin (default deny)
+- AND every request carries a per-session bearer token (FR-40)
+
+### S-4.1 — Pair a phone via QR code (Phase B)
 **As a** developer, **I want to** pair my iPhone with my local daemon by scanning a QR code, **so that** I don't need to type secrets.
 
 **Acceptance**
@@ -209,7 +231,11 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E5 — Zero-Trust Transport
 
-### S-5.1 — Transport selectable in config
+**JTBD**: When I want remote control of my agents, I want identity-based zero-trust transport, so that I never expose dev hardware to the internet.
+
+> **Phase B only — NOT in v0.1.0.** v0.1.0 ships loopback-only ("Local Only" UX). OpenZiti and Noise-WS arrive in Phase B as a "Remote Access" toggle.
+
+### S-5.1 — Transport selectable in config (Phase B)
 **As a** security-conscious user, **I want** to pick my transport mode (direct / Ziti / Noise-WS), **so that** I match my threat model.
 
 **Acceptance**
@@ -241,6 +267,10 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 ---
 
 ## E6 — Policy & Safety (AVM)
+
+**JTBD**: When an agent runs autonomously, I want a policy engine to block obvious footguns and audit every tool call, so that I can trust it without supervising every command.
+
+> **v0.1.0**: in-process AVM trait + baseline deny-list (S-6.1) only. Strict enforcement runs for Claude Code (interceptable MCP); Codex CLI runs in `audit-only` mode with a loud spawn-time warning. Per-agent policies, hot reload, and per-provider strict enforcement everywhere are Phase B.
 
 ### S-6.1 — Baseline policy blocks dangerous commands
 **As a** user, **I want** a sensible default policy blocking obvious footguns, **so that** an agent can't destroy my system on day one.
@@ -280,23 +310,28 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ---
 
-## E7 — Storage & Isolation (AgentFS)
+## E7 — Storage & Isolation (StorageBackend trait)
 
-### S-7.1 — Per-agent filesystem namespace
+**JTBD**: When I run multiple agents on one machine, I want each agent to only see its own working directory, so that a compromised agent cannot exfiltrate cross-agent data.
+
+> **v0.1.0**: pluggable `StorageBackend` trait. Default backend = **plain directories + OS permissions**. AgentFS is a feature-flagged opt-in backend (`--features agentfs`) when the upstream SDK reaches production stability.
+
+### S-7.1 — Per-agent storage namespace
 **As a** security-conscious user, **I want** each agent to only see its own files, **so that** a compromised agent cannot exfiltrate cross-agent data.
 
 **Acceptance**
-- WHEN two agents A and B are spawned
-- THEN agent A's working directory is `/Users/$USER/lesearch/agents/A/fs/`
-- AND `ls /Users/$USER/lesearch/agents/B/fs/` from inside A returns permission denied
-- AND verified via integration test
+- WHEN two agents A and B are spawned with the default plain-dir backend
+- THEN agent A's namespace root is `/Users/$USER/.lesearch/agents/A/fs/` with `chmod 700` owned by the daemon's effective user
+- AND any read attempt from inside A's process to `/Users/$USER/.lesearch/agents/B/fs/` returns `EACCES`
+- AND verified via integration test that asserts both the permission bits and the cross-agent denial
+- AND the same test re-runs against the AgentFS backend when `--features agentfs` is enabled (Phase B / opt-in)
 
 ### S-7.2 — Shared workspace
 **As a** multi-agent orchestrator, **I want** agents to share a workspace when I opt in, **so that** they can collaborate on a single codebase.
 
 **Acceptance**
 - WHEN I run `lesearch workspace create my-project --agents claude-1,codex-2`
-- THEN both agents mount the same AgentFS namespace
+- THEN both agents are exposed to the same storage namespace via the active backend (shared directory under `PlainDirBackend`; shared mount under opt-in `AgentFsBackend`) — see FR-12
 - AND writes from one are visible to the other within 100 ms
 - AND the workspace auto-closes when the last agent exits (configurable)
 
@@ -313,7 +348,11 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E8 — A2A Interop
 
-### S-8.1 — External A2A client consumes our agent
+**JTBD**: When I use external A2A-speaking tools, I want them to discover and (eventually) drive my local agents, so that I'm not locked into LeSearch's UI.
+
+> **v0.1.0**: read-only A2A 1.0.0 agent card + profile + `A2A-Version` negotiation. Inbound dispatch (`POST /message/send`), `generic-a2a` provider import, and OpenFused inbox are **Phase B**.
+
+### S-8.1 — External A2A client consumes our agent (Phase B)
 **As a** user of Google's A2A-compatible tools, **I want** to drive my local lesearch agent from those tools, **so that** I don't have to maintain two agent setups.
 
 **Acceptance**
@@ -342,6 +381,10 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E9 — Native macOS & iOS (Phase B)
 
+**JTBD**: When I want a polished native experience, I want first-class macOS + iOS apps, so that LeSearch fits the platform I work on.
+
+> **Phase B only — NOT in v0.1.0.** v0.1.0 ships only the Tauri desktop + responsive web UI on loopback.
+
 ### S-9.1 — macOS app ships the daemon
 **As a** casual macOS user, **I want** a one-click installer for a macOS app that runs the daemon in the background, **so that** I don't need to use the CLI.
 
@@ -351,7 +394,10 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 - AND the menu bar shows agent status
 - AND closing the UI doesn't stop the daemon (keeps running in background)
 
-### S-9.2 — Per-agent virtual display (macOS host)
+### S-9.2 — Per-agent virtual display (macOS host) — RESEARCH TRACK ONLY
+
+> **NOT a v0.1.0 or v1.0 ship item.** Tracked in the cmux salvage branch as a research experiment. Apple's CGVirtualDisplay is private API, breaks across macOS versions, and is App Store hostile. Re-evaluated only if a stable public alternative appears.
+
 **As a** power user on macOS, **I want** each GUI-capable agent to run in its own virtual display, **so that** I can observe multiple agents doing visual work simultaneously.
 
 **Acceptance**
@@ -374,6 +420,10 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E10 — Remote Desktop (Phase B)
 
+**JTBD**: When an agent needs a GUI on a remote host, I want to see and steer that GUI from any browser, so that headless servers stay useful for visual tasks.
+
+> **Phase B only — NOT in v0.1.0.**
+
 ### S-10.1 — HTML5 VNC for Linux hosts
 **As a** Linux host user, **I want** to see a GUI agent's display from any browser, **so that** I don't need a VNC client.
 
@@ -386,14 +436,19 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E11 — Observability
 
-### S-11.1 — OpenTelemetry traces by default
-**As a** operator, **I want** the daemon to emit OTEL spans to a local collector, **so that** I can diagnose issues.
+**JTBD**: When something goes wrong, I want a single command and a single dashboard to tell me what's wrong, so that I can fix it without reading raw logs for an hour.
+
+> **v0.1.0**: `lesearch doctor` (S-11.3) + agents-observe hook events (S-11.2). OTEL is **opt-in only** — see S-11.1.
+
+### S-11.1 — OpenTelemetry traces (opt-in)
+**As an** operator, **I want** the daemon to emit OTEL spans to a local collector when I enable it, **so that** I can diagnose issues without paying the cost when I don't need it.
 
 **Acceptance**
-- GIVEN `otel.endpoint = "http://localhost:4318"` in config
-- WHEN any agent call travels through the stack
+- GIVEN `otel.endpoint` is **empty** in default config (off by default)
+- WHEN I set `otel.endpoint = "http://localhost:4318"` and restart
 - THEN spans for `agent.create`, `tool.call`, `policy.decision`, `session.write` are emitted
-- AND context propagates across provider and AVM sidecar
+- AND context propagates across provider and the in-process AVM trait
+- AND with the default empty endpoint, **zero** OTEL machinery runs (no background exporter task)
 
 ### S-11.2 — agents-observe integration
 **As a** hook-based observer user, **I want** lesearch to emit the same hook events as Claude Code, **so that** agents-observe dashboard works out of the box.
@@ -415,6 +470,8 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 ---
 
 ## E12 — Resource Hygiene (user-flagged critical)
+
+**JTBD**: When LeSearch runs in the background on my dev machine, I want it to consume bounded resources, so that it never competes with my actual work.
 
 ### S-12.1 — Memory ceiling
 **As a** self-hoster, **I want** the daemon to respect a hard memory ceiling, **so that** it can't eat my entire RAM.
@@ -471,6 +528,8 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 
 ## E13 — Developer Experience
 
+**JTBD**: When I extend LeSearch — adding a provider, building a UI client, or hopping back into a session from my editor — I want the seams to be obvious and small, so that I stay in flow.
+
 ### S-13.1 — Add a provider in ≤ 200 LOC
 **As a** OSS contributor, **I want** to add a new agent provider with minimal code, **so that** community-driven integrations are viable.
 
@@ -479,7 +538,7 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 - WHEN I implement the `AgentProvider` trait
 - THEN my provider integrates in < 200 lines (80/20) and < 2 hours on a typical CLI
 
-### S-13.2 — SDK for third-party UI clients
+### S-13.2 — SDK for third-party UI clients (Phase B)
 **As a** third-party UI builder, **I want** a stable client SDK, **so that** I can build alternate front-ends without reverse-engineering.
 
 **Acceptance**
@@ -487,15 +546,43 @@ Format: `As a [role], I want [capability], so that [outcome].` Acceptance criter
 - WHEN I read `docs/CLIENT_SDK.md`
 - THEN connecting, subscribing to timelines, and issuing commands takes ≤ 50 lines of code
 
+### S-13.3 — Attach in my editor (`--open-in-$EDITOR`) (v0.1.0)
+
+**As a** developer who lives in VS Code / Zed / iTerm, **I want** `lesearch attach <id> --open-in-$EDITOR` to open the attached terminal in my preferred editor, **so that** I never have to leave my IDE to babysit a running agent.
+
+**Acceptance**
+- GIVEN `$EDITOR=code` is set in the shell environment
+- WHEN I run `lesearch attach <id> --open-in-$EDITOR`
+- THEN the attached terminal opens in a VS Code integrated terminal pane
+- AND `--open-in-zed` / `--open-in-iterm` work analogously when those tools are on PATH
+- AND if the editor is not detected, the command falls back to a normal foreground attach with a one-line warning
+- AND no full IDE plugin is installed or required
+
 ---
 
-## Prioritization (Phase A MVP scope)
+## Prioritization (ruthless v0.1.0 scope)
 
-**Must-have for v0.1.0** (dogfood-ready):
-E1 (install+uninstall), E2 (spawn+control), E3 (session capture+search+replay), E7 (storage+isolation), E8 (A2A), E11 (observability), E12 (resource hygiene), E13.1 (provider API).
+**Must-have for v0.1.0** (5 hard engineering gates per `PRD.md §8.1`):
+- E1 (install + uninstall) — full
+- E2 (spawn + control, 2 providers: Claude Code + Codex) — full
+- E3 (session capture + JCS-canonical + hash-chain + Ed25519 + FTS5 substring search; jsongrep deferred) — full
+- E4.0 (responsive web UI on loopback) — only S-4.0 from E4 ships in v0.1.0
+- E6 (in-process AVM trait + baseline deny-list; per-provider `enforcement_mode`; Codex = audit-only) — partial
+- E7 (storage + isolation via `StorageBackend` trait, plain-dirs default) — full
+- E8 (read-only A2A 1.0.0 agent card + `A2A-Version` negotiation) — partial
+- E11.2 (agents-observe hook events) + E11.3 (`lesearch doctor`); E11.1 OTEL **opt-in only**
+- E12 (resource hygiene — full)
+- E13.1 (provider API) + E13.3 (`--open-in-$EDITOR`)
 
 **Deferred to v0.2.0 / Phase B**:
-E4 (multi-device), E5 (Ziti+Noise-WS), E6 (full AVM enforcement — Phase A gets hook points only), E9 (native Mac/iOS), E10 (remote desktop), E13.2 (public SDK polish).
+- E4 native iOS / push / voice / dispatch — Phase B
+- E5 (OpenZiti + Noise-WS transports) — Phase B
+- E6 hot-reload + per-agent policy + strict everywhere — Phase B
+- E8 inbound dispatch (`POST /message/send`) + generic-a2a import + OpenFused inbox — Phase B
+- E9 native macOS + iOS apps — Phase B (S-9.2 CGVirtualDisplay = research track only, never on the v0.1.0 / v1.0 roadmap)
+- E10 remote desktop — Phase B
+- E11.1 OTEL on by default — never default
+- E13.2 public SDK polish — Phase B
 
 ---
 
@@ -504,4 +591,5 @@ E4 (multi-device), E5 (Ziti+Noise-WS), E6 (full AVM enforcement — Phase A gets
 | Rev | Date | Notes |
 |---|---|---|
 | 0.1 | 2026-04-14 | Initial backlog for review. |
+| 0.2 | 2026-04-14 | Review synthesis applied (A1–A12, D1–D5). JTBD added per epic. E4/E5/E9/E10 → Phase B banners. New S-4.0 (responsive web UI on loopback). New S-13.3 (`--open-in-$EDITOR`). E7.1 → plain-dirs backend default. E8 → read-only A2A 1.0.0 in v0.1.0. E11.1 OTEL → opt-in. S-9.2 CGVirtualDisplay → research track only. Prioritization rewritten against ruthless v0.1.0 scope. |
 
