@@ -60,6 +60,7 @@ mime_guess = "2"
 
 # Crypto (audit surface only)
 ed25519-dalek = { version = "2", features = ["rand_core"] }
+subtle = "2"
 sha2 = "0.10"
 rand = "0.8"
 

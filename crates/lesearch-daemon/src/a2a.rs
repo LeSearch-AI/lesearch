@@ -36,7 +36,7 @@ pub struct AgentCapabilities {
 /// `GET /.well-known/agent.json` handler.
 #[allow(clippy::unused_async)]
 pub async fn agent_card_handler(
-    State(state): State<SharedState>,
+    State(_state): State<SharedState>,
 ) -> impl IntoResponse {
     let bind = lesearch_protocol::DEFAULT_BIND;
     let card = AgentCard {
@@ -46,7 +46,7 @@ pub async fn agent_card_handler(
             env!("CARGO_PKG_VERSION")
         ),
         url: format!("http://{bind}/.well-known/agent.json"),
-        version: state.config.daemon.log_level.clone(),
+        version: env!("CARGO_PKG_VERSION").into(),
         capabilities: AgentCapabilities { streaming: true },
     };
 

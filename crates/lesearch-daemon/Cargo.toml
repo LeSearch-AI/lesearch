@@ -30,6 +30,7 @@ serde_json.workspace = true
 uuid.workspace = true
 rand.workspace = true
 hex.workspace = true
+subtle.workspace = true
 rust-embed.workspace = true
 mime_guess.workspace = true
 thiserror.workspace = true

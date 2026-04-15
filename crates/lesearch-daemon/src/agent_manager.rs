@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use lesearch_protocol::agent::AgentId;
-use lesearch_providers::{AgentEvent, AgentHandle, AgentProvider, AgentSpec};
+use lesearch_providers::{AgentEvent, AgentHandle, AgentSpec};
 use tokio::sync::mpsc;
 
 use crate::DaemonError;
@@ -70,15 +70,19 @@ impl AgentManager {
         }
     }
 
-    /// Spawn a new agent using the given provider.
-    pub async fn spawn(
-        &mut self,
-        provider: &dyn AgentProvider,
+    /// Prepare a spawn: allocate IDs and create isolation dirs.
+    ///
+    /// Returns `(agent_id, session_id, spec)` without calling the provider.
+    /// This is designed to be called under the lock, then the lock is released,
+    /// the provider spawns the process, and [`register_agent`] is called to
+    /// insert the result — avoiding holding the mutex across `.await`.
+    pub fn prepare_spawn(
+        &self,
         prompt: String,
         cwd: PathBuf,
         model: Option<String>,
         mode: Option<String>,
-    ) -> Result<AgentId, DaemonError> {
+    ) -> Result<(AgentId, String, AgentSpec), DaemonError> {
         let agent_id = AgentId::new();
         let session_id = uuid::Uuid::now_v7().to_string();
 
@@ -90,7 +94,7 @@ impl AgentManager {
         })?;
 
         // Use agent's cwd if specified, otherwise the isolated dir
-        let effective_cwd = if cwd.as_os_str().is_empty() { agent_fs } else { cwd.clone() };
+        let effective_cwd = if cwd.as_os_str().is_empty() { agent_fs } else { cwd };
 
         let spec = AgentSpec {
             prompt,
@@ -99,11 +103,23 @@ impl AgentManager {
             mode,
         };
 
-        let handle = provider.spawn(spec).await?;
+        Ok((agent_id, session_id, spec))
+    }
 
+    /// Register a spawned agent after the provider has created the handle.
+    ///
+    /// Call this under the lock after releasing it for `provider.spawn()`.
+    pub fn register_agent(
+        &mut self,
+        agent_id: AgentId,
+        session_id: String,
+        provider_name: &str,
+        cwd: PathBuf,
+        handle: AgentHandle,
+    ) {
         let agent = RunningAgent {
             id: agent_id,
-            provider: provider.manifest().name.to_owned(),
+            provider: provider_name.to_owned(),
             status: "running".into(),
             cwd,
             session_id: session_id.clone(),
@@ -115,8 +131,7 @@ impl AgentManager {
         // Start background event forwarding task
         self.start_event_reader(agent_id, session_id);
 
-        tracing::info!(%agent_id, provider = provider.manifest().name, "agent spawned");
-        Ok(agent_id)
+        tracing::info!(%agent_id, provider = provider_name, "agent spawned");
     }
 
     /// Send text input to a running agent.

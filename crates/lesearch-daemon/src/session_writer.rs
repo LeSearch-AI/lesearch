@@ -20,10 +20,12 @@ use std::sync::Arc;
 /// Spawn the background session writer task.
 ///
 /// Returns immediately. The task reads from `rx` until the channel closes.
+/// Uses the provided `keyring` (cloned per session) so all sessions share
+/// the daemon's stable Ed25519 identity.
 pub fn spawn_session_writer(
     mut rx: mpsc::Receiver<(String, AgentEvent)>,
     sessions_dir: PathBuf,
-    _keyring: Keyring,
+    keyring: Keyring,
     search_index: Arc<Mutex<SearchIndex>>,
 ) {
     tokio::spawn(async move {
@@ -33,13 +35,7 @@ pub fn spawn_session_writer(
             // Lazily open a writer for each session
             let writer = if let Some(w) = writers.get_mut(&session_id) { w } else {
                 let path = sessions_dir.join(format!("{session_id}.jsonl"));
-                // Each session gets a fresh keyring clone for signing
-                // In v0.1.0 we use the same daemon keyring for all sessions.
-                // We need to reconstruct a keyring from the same key bytes.
-                // For now, generate per-session (simpler; verification still works
-                // because each event embeds its pubkey).
-                let kr = Keyring::generate();
-                match SessionLogWriter::open(&path, kr) {
+                match SessionLogWriter::open(&path, keyring.clone()) {
                     Ok(w) => {
                         writers.insert(session_id.clone(), w);
                         writers.get_mut(&session_id).unwrap()

@@ -25,10 +25,27 @@ export class DaemonClient {
     this.#url = url;
   }
 
-  /** Connect to the daemon WebSocket endpoint. */
-  connect(): Promise<void> {
+  /** Connect to the daemon WebSocket endpoint.
+   *  Fetches the bearer token from `/api/auth-token` and passes it
+   *  as a query parameter (Browser WebSocket API doesn't support headers). */
+  async connect(): Promise<void> {
+    // Fetch bearer token from same-origin endpoint
+    let tokenUrl = this.#url;
+    try {
+      const resp = await fetch("/api/auth-token");
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.token) {
+          const sep = this.#url.includes("?") ? "&" : "?";
+          tokenUrl = `${this.#url}${sep}token=${data.token}`;
+        }
+      }
+    } catch {
+      // Fall back to no token (will fail auth but shows a clear error)
+    }
+
     return new Promise((resolve, reject) => {
-      this.#ws = new WebSocket(this.#url);
+      this.#ws = new WebSocket(tokenUrl);
 
       this.#ws.onopen = () => resolve();
       this.#ws.onerror = () => reject(new Error("WebSocket connection failed"));

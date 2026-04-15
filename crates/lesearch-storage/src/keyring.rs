@@ -13,6 +13,7 @@ use sha2::{Digest, Sha256};
 ///
 /// Holds the signing key in memory. The key is zeroized on drop
 /// (provided by `ed25519-dalek`).
+#[derive(Clone)]
 pub struct Keyring {
     signing_key: SigningKey,
 }

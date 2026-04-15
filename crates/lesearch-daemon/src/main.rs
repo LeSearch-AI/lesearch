@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
     // Spawn session writer background task
     let sessions_dir = home.join("sessions");
     std::fs::create_dir_all(&sessions_dir)?;
-    spawn_session_writer(event_rx, sessions_dir, Keyring::generate(), search_index.clone());
+    spawn_session_writer(event_rx, sessions_dir, keyring.clone(), search_index.clone());
 
     // Load or generate bearer token for WS auth
     let bearer_token = lesearch_daemon::auth::load_or_generate_token(&home)?;
@@ -83,6 +83,7 @@ async fn main() -> anyhow::Result<()> {
             get(lesearch_daemon::a2a::agent_card_handler),
         )
         .route("/health", get(lesearch_daemon::a2a::health_handler))
+        .route("/api/auth-token", get(lesearch_daemon::auth::token_handler))
         // Web UI — embedded React SPA
         .route("/", get(lesearch_daemon::web::index_handler))
         .route("/assets/{*path}", get(lesearch_daemon::web::static_handler))

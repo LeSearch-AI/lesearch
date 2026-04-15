@@ -91,18 +91,22 @@ async fn handle_agent_spawn(state: &SharedState, params: &Value) -> Result<Value
     let cwd = spawn_params
         .cwd.map_or_else(|| std::env::current_dir().unwrap_or_else(|_| "/tmp".into()), std::path::PathBuf::from);
 
-    let agent_id = state
+    // Step 1: prepare under lock (allocate IDs, create dirs — fast)
+    let (agent_id, session_id, spec) = state
         .agent_manager
         .lock()
         .await
-        .spawn(
-            provider.as_ref(),
-            spawn_params.prompt,
-            cwd,
-            spawn_params.model,
-            spawn_params.mode,
-        )
-        .await?;
+        .prepare_spawn(spawn_params.prompt, cwd.clone(), spawn_params.model, spawn_params.mode)?;
+
+    // Step 2: spawn the process WITHOUT holding the lock
+    let handle = provider.spawn(spec).await?;
+
+    // Step 3: register the running agent under lock (fast insert)
+    state
+        .agent_manager
+        .lock()
+        .await
+        .register_agent(agent_id, session_id, provider.manifest().name, cwd, handle);
 
     Ok(serde_json::json!({ "agent_id": agent_id.to_string() }))
 }

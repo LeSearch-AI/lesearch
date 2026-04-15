@@ -10,6 +10,7 @@ use axum::extract::{State, WebSocketUpgrade};
 use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
 use rand::Rng;
+use subtle::ConstantTimeEq;
 
 use crate::SharedState;
 
@@ -108,13 +109,17 @@ pub fn token_path(home: &Path) -> PathBuf {
 // ---------------------------------------------------------------------------
 
 /// Check if a bearer token from the `Authorization` header matches the expected token.
+///
+/// Uses constant-time comparison to prevent timing side-channel attacks.
 #[must_use]
 pub fn validate_bearer(headers: &HeaderMap, expected: &str) -> bool {
     headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
-        .is_some_and(|token| token == expected)
+        .is_some_and(|token| {
+            token.as_bytes().ct_eq(expected.as_bytes()).into()
+        })
 }
 
 /// Check if the request's `Origin` or `Host` header is in the allowlist.
@@ -156,11 +161,14 @@ fn is_allowed_origin(value: &str, additional: &[String]) -> bool {
 /// Authenticated `WebSocket` upgrade handler.
 ///
 /// Checks bearer token and origin allowlist before upgrading.
-/// Returns `403` or closes with `1008` on auth failure.
+/// Bearer token can be sent as `Authorization: Bearer <token>` header
+/// or as `?token=<token>` query parameter (for browser WebSocket clients).
+/// Returns `403` on auth failure.
 #[allow(clippy::unused_async)]
 pub async fn authenticated_ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<SharedState>,
+    query: axum::extract::Query<TokenQuery>,
     headers: HeaderMap,
 ) -> Response {
     // Origin/Host check first (cheap)
@@ -174,8 +182,14 @@ pub async fn authenticated_ws_handler(
             .into_response();
     }
 
-    // Bearer token check
-    if !validate_bearer(&headers, &state.bearer_token) {
+    // Bearer token check — header first, then query param fallback
+    let has_valid_bearer = validate_bearer(&headers, &state.bearer_token)
+        || query
+            .token
+            .as_deref()
+            .is_some_and(|t| t.as_bytes().ct_eq(state.bearer_token.as_bytes()).into());
+
+    if !has_valid_bearer {
         tracing::warn!("WebSocket rejected: missing or invalid bearer token");
         return (
             axum::http::StatusCode::FORBIDDEN,
@@ -186,6 +200,37 @@ pub async fn authenticated_ws_handler(
     }
 
     ws.on_upgrade(move |socket| crate::ws::handle_socket(socket, state))
+}
+
+/// Query parameters for WebSocket auth (browser fallback).
+#[derive(Debug, serde::Deserialize)]
+pub struct TokenQuery {
+    /// Bearer token passed as query param for browser WebSocket clients.
+    pub token: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Token endpoint for browser clients
+// ---------------------------------------------------------------------------
+
+/// Serve the bearer token to same-origin browser clients.
+///
+/// This endpoint is protected by the Origin allowlist but does not require
+/// a bearer token (chicken-and-egg: the browser needs this to get the token).
+#[allow(clippy::unused_async)]
+pub async fn token_handler(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+) -> Response {
+    if !validate_origin(&headers, &state.config.security.additional_origins) {
+        return (
+            axum::http::StatusCode::FORBIDDEN,
+            "origin not allowed",
+        )
+            .into_response();
+    }
+
+    axum::Json(serde_json::json!({ "token": state.bearer_token })).into_response()
 }
 
 // ---------------------------------------------------------------------------
