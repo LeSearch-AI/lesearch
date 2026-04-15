@@ -13,6 +13,7 @@ categories.workspace = true
 
 [dependencies]
 lesearch-protocol = { path = "../lesearch-protocol" }
+async-trait.workspace = true
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
