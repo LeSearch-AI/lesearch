@@ -79,6 +79,11 @@ enum SessionAction {
         #[arg(long, default_value = "50")]
         limit: u32,
     },
+    /// Verify signature + hash chain of a session log file.
+    Verify {
+        /// Path to the JSONL session log file.
+        path: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -115,6 +120,7 @@ async fn main() -> Result<()> {
             SessionAction::Search { grep, limit } => {
                 cmd_session_search(&cli.daemon, &grep, limit).await
             }
+            SessionAction::Verify { path } => cmd_session_verify(&path),
         },
         Commands::Doctor => cmd_doctor(&cli.daemon).await,
         Commands::Daemon { action } => match action {
@@ -281,6 +287,28 @@ async fn cmd_session_search(daemon: &str, query: &str, limit: u32) -> Result<()>
     }
 
     Ok(())
+}
+
+fn cmd_session_verify(path: &str) -> Result<()> {
+    let path = std::path::Path::new(path);
+    if !path.exists() {
+        anyhow::bail!("file not found: {}", path.display());
+    }
+
+    println!("Verifying session log: {}", path.display());
+
+    match lesearch_storage::session_log::verify_session_log(path) {
+        Ok(count) => {
+            println!("  OK — {count} events verified");
+            println!("  Hash chain: intact");
+            println!("  Signatures: valid");
+            Ok(())
+        }
+        Err(e) => {
+            println!("  FAILED: {e}");
+            anyhow::bail!("verification failed: {e}");
+        }
+    }
 }
 
 async fn cmd_doctor(daemon: &str) -> Result<()> {
