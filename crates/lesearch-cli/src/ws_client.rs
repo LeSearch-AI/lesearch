@@ -5,6 +5,7 @@
 
 use anyhow::{Context, Result};
 use futures::{SinkExt, StreamExt};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
 /// `WebSocket` client connected to the daemon.
@@ -25,9 +26,23 @@ pub struct WsClient {
 
 impl WsClient {
     /// Connect to the daemon's `WebSocket` endpoint.
+    ///
+    /// Reads the bearer token from `$LESEARCH_HOME/keyring/session.token`
+    /// and sends it as `Authorization: Bearer <token>` on the upgrade request.
     pub async fn connect(addr: &str) -> Result<Self> {
         let url = format!("ws://{addr}/ws");
-        let (ws, _) = tokio_tungstenite::connect_async(&url)
+        let mut request = url.as_str().into_client_request()
+            .with_context(|| format!("invalid WebSocket URL: {url}"))?;
+
+        // Read bearer token from LESEARCH_HOME
+        if let Ok(token) = read_bearer_token() {
+            request.headers_mut().insert(
+                "Authorization",
+                format!("Bearer {token}").parse().context("invalid token header value")?,
+            );
+        }
+
+        let (ws, _) = tokio_tungstenite::connect_async(request)
             .await
             .with_context(|| format!("failed to connect to {url}"))?;
 
@@ -160,4 +175,31 @@ fn handle_notification(method: &str, value: &serde_json::Value) {
             tracing::debug!(method, "unknown notification");
         }
     }
+}
+
+/// Read bearer token from `$LESEARCH_HOME/keyring/session.token`.
+///
+/// Falls back to `~/.lesearch/keyring/session.token` if `LESEARCH_HOME` is unset.
+fn read_bearer_token() -> Result<String> {
+    let home = std::env::var("LESEARCH_HOME").map_or_else(
+        |_| {
+            std::env::var("HOME").map_or_else(
+                |_| std::path::PathBuf::from(".lesearch"),
+                |h| std::path::PathBuf::from(h).join(".lesearch"),
+            )
+        },
+        std::path::PathBuf::from,
+    );
+
+    let token_path = home.join("keyring").join("session.token");
+    let token = std::fs::read_to_string(&token_path)
+        .with_context(|| format!("cannot read bearer token from {}", token_path.display()))?
+        .trim()
+        .to_owned();
+
+    if token.is_empty() {
+        anyhow::bail!("bearer token file is empty: {}", token_path.display());
+    }
+
+    Ok(token)
 }

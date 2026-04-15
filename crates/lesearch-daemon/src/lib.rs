@@ -8,6 +8,7 @@
 
 pub mod a2a;
 pub mod agent_manager;
+pub mod auth;
 pub mod router;
 pub mod session_writer;
 pub mod ws;
@@ -49,6 +50,8 @@ pub struct DaemonState {
     pub providers: HashMap<String, Box<dyn AgentProvider>>,
     /// Agent manager (manages running agents).
     pub agent_manager: Mutex<agent_manager::AgentManager>,
+    /// Per-session bearer token for WebSocket authentication.
+    pub bearer_token: String,
 }
 
 impl std::fmt::Debug for DaemonState {

@@ -22,6 +22,8 @@ pub struct LesearchConfig {
     pub providers: HashMap<String, ProviderConfig>,
     /// A2A gateway settings.
     pub a2a: A2aConfig,
+    /// Security settings (bearer token, origin allowlist).
+    pub security: SecurityConfig,
 }
 
 /// Daemon settings.
@@ -82,6 +84,14 @@ pub struct A2aConfig {
     pub bearer_token_env: String,
 }
 
+/// Security settings for loopback hardening.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SecurityConfig {
+    /// Additional allowed origins beyond the built-in loopback set.
+    pub additional_origins: Vec<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Defaults
 // ---------------------------------------------------------------------------
@@ -94,6 +104,7 @@ impl Default for LesearchConfig {
             limits: LimitsConfig::default(),
             providers: default_providers(),
             a2a: A2aConfig::default(),
+            security: SecurityConfig::default(),
         }
     }
 }

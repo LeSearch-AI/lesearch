@@ -61,6 +61,9 @@ async fn main() -> anyhow::Result<()> {
     std::fs::create_dir_all(&sessions_dir)?;
     spawn_session_writer(event_rx, sessions_dir, Keyring::generate(), search_index.clone());
 
+    // Load or generate bearer token for WS auth
+    let bearer_token = lesearch_daemon::auth::load_or_generate_token(&home)?;
+
     // Build shared state
     let state: SharedState = Arc::new(DaemonState {
         config,
@@ -69,11 +72,12 @@ async fn main() -> anyhow::Result<()> {
         search_index,
         providers,
         agent_manager: Mutex::new(AgentManager::new(event_tx, home)),
+        bearer_token,
     });
 
     // Build router
     let app = Router::new()
-        .route("/ws", get(lesearch_daemon::ws::ws_handler))
+        .route("/ws", get(lesearch_daemon::auth::authenticated_ws_handler))
         .route(
             "/.well-known/agent.json",
             get(lesearch_daemon::a2a::agent_card_handler),

@@ -22,7 +22,7 @@ pub async fn ws_handler(
 
 /// Handle an individual `WebSocket` connection.
 #[allow(clippy::cognitive_complexity)]
-async fn handle_socket(socket: WebSocket, state: SharedState) {
+pub(crate) async fn handle_socket(socket: WebSocket, state: SharedState) {
     let (mut sender, mut receiver) = socket.split();
 
     tracing::info!("websocket client connected");
