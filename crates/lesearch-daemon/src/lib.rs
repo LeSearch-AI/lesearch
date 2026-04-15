@@ -11,6 +11,7 @@ pub mod agent_manager;
 pub mod auth;
 pub mod router;
 pub mod session_writer;
+pub mod web;
 pub mod ws;
 
 use std::collections::HashMap;

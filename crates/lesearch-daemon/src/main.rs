@@ -83,6 +83,10 @@ async fn main() -> anyhow::Result<()> {
             get(lesearch_daemon::a2a::agent_card_handler),
         )
         .route("/health", get(lesearch_daemon::a2a::health_handler))
+        // Web UI — embedded React SPA
+        .route("/", get(lesearch_daemon::web::index_handler))
+        .route("/assets/{*path}", get(lesearch_daemon::web::static_handler))
+        .fallback(get(lesearch_daemon::web::index_handler))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

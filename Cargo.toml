@@ -54,6 +54,10 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Static file embedding
+rust-embed = "8"
+mime_guess = "2"
+
 # Crypto (audit surface only)
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 sha2 = "0.10"
