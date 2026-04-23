@@ -26,16 +26,25 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 futures = "0.3"
 
+# CLI
+clap = { version = "4", features = ["derive"] }
+
 # HTTP / WebSocket
 axum = { version = "0.8", features = ["ws", "macros"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "cors"] }
 tungstenite = "0.24"
+tokio-tungstenite = "0.26"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
+serde_json_canonicalizer = "0.3"
+hex = "0.4"
+
+# Async trait (dyn-safe async providers)
+async-trait = "0.1"
 
 # Error handling
 thiserror = "2"
@@ -45,8 +54,13 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Static file embedding
+rust-embed = "8"
+mime_guess = "2"
+
 # Crypto (audit surface only)
 ed25519-dalek = { version = "2", features = ["rand_core"] }
+subtle = "2"
 sha2 = "0.10"
 rand = "0.8"
 

@@ -6,6 +6,7 @@ Cargo.lock.bak
 # Node / Tauri (Phase A UI)
 node_modules/
 dist/
+!web/dist/
 .vite/
 .tauri/
 

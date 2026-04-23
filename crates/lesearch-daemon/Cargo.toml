@@ -19,12 +19,20 @@ path = "src/main.rs"
 lesearch-protocol = { path = "../lesearch-protocol" }
 lesearch-storage = { path = "../lesearch-storage" }
 lesearch-providers = { path = "../lesearch-providers" }
+async-trait.workspace = true
 tokio.workspace = true
+futures.workspace = true
 axum.workspace = true
 tower.workspace = true
 tower-http.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+uuid.workspace = true
+rand.workspace = true
+hex.workspace = true
+subtle.workspace = true
+rust-embed.workspace = true
+mime_guess.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
